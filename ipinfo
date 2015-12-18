@@ -1,0 +1,43 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use CGI::Ex::Dump qw(debug);
+use LWP::UserAgent;
+use JSON qw(from_json);
+#use PrettyTable;
+
+my $p = bless {}, __PACKAGE__;
+$p->main;
+exit;
+
+sub main {
+    my ($self,$args) = @_;
+    my $ip = $ARGV[0];
+    die "no ip provided" unless $ip;
+
+    $ip = $self->domain_ip({domain => $ip})
+      if $ip =~ /[a-z]/i;
+
+    my $ipinfo = eval{ from_json($self->ua->get("http://ipinfo.io/$ip")->content) };
+#    print PrettyTable->plain_text($ipinfo);
+    debug $ipinfo;
+}
+
+sub domain_ip {
+    my ($self,$args) = @_;
+    my $domain = $args->{'domain'};
+    # Only grab the domain part 
+    $domain = $domain =~ m/^(?:http(?:s?):)?\/\/([^\/]*)/ ? $1 : $domain;
+    require Socket;
+    return eval { Socket::inet_ntoa((Socket::inet_aton($domain)||'')) } || die "could not resolve $domain";
+}
+
+sub ua {
+    shift->{'ua'} ||= do{
+        LWP::UserAgent->new(
+            agent => 'curl/7.9.8',
+        );
+    }
+}
